@@ -1,5 +1,5 @@
 use base64::Engine;
-use image::{ImageBuffer, Rgba};
+use image::{ImageBuffer, ImageEncoder, Rgba};
 use std::path::Path;
 use windows::Win32::Graphics::Gdi::DeleteObject;
 
@@ -38,8 +38,25 @@ impl Image {
         }
     }
 
-    pub fn as_base64(&self) -> String {
+    pub fn as_base64_raw(&self) -> String {
         base64::engine::general_purpose::STANDARD.encode(&self.pixels)
+    }
+
+    /// Returns the image encoded as a base64 PNG string
+    pub fn as_base64_png(&self, width: u32, height: u32) -> Result<String, Box<dyn std::error::Error>> {
+        // Create an ImageBuffer from the raw RGBA pixels
+        let buffer = ImageBuffer::<Rgba<u8>, _>::from_raw(width, height, self.pixels.to_vec())
+            .ok_or("Failed to create ImageBuffer from raw pixels")?;
+
+        // Encode the ImageBuffer into PNG format
+        let mut png_data = Vec::new();
+        image::codecs::png::PngEncoder::new(&mut png_data)
+            .write_image(&buffer, width, height, image::ColorType::Rgba8)?;
+
+        // Base64 encode the PNG data
+        let base64_png = base64::engine::general_purpose::STANDARD.encode(png_data);
+
+        Ok(format!("data:image/png;base64,{}", base64_png))
     }
 
     pub fn save_as_png(
@@ -54,7 +71,6 @@ impl Image {
         // Save the ImageBuffer as a PNG file
         buffer.save(Path::new(output_path))?;
 
-        println!("Image saved to {}", output_path);
         Ok(())
     }
 
