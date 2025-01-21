@@ -7,6 +7,8 @@ use crate::{renderer, shell};
 
 pub struct Image {
     pixels: Vec<u8>,
+    width: u32,
+    height: u32,
 }
 
 impl Image {
@@ -25,6 +27,8 @@ impl Image {
                     }
                     Ok(Self {
                         pixels: rgba_pixels,
+                        width,
+                        height,
                     })
                 }
                 Err(err) => {
@@ -43,15 +47,20 @@ impl Image {
     }
 
     /// Returns the image encoded as a base64 PNG string
-    pub fn as_base64_png(&self, width: u32, height: u32) -> Result<String, Box<dyn std::error::Error>> {
+    pub fn as_base64_png(&self) -> Result<String, Box<dyn std::error::Error>> {
         // Create an ImageBuffer from the raw RGBA pixels
-        let buffer = ImageBuffer::<Rgba<u8>, _>::from_raw(width, height, self.pixels.to_vec())
-            .ok_or("Failed to create ImageBuffer from raw pixels")?;
+        let buffer =
+            ImageBuffer::<Rgba<u8>, _>::from_raw(self.width, self.height, self.pixels.to_vec())
+                .ok_or("Failed to create ImageBuffer from raw pixels")?;
 
         // Encode the ImageBuffer into PNG format
         let mut png_data = Vec::new();
-        image::codecs::png::PngEncoder::new(&mut png_data)
-            .write_image(&buffer, width, height, image::ColorType::Rgba8)?;
+        image::codecs::png::PngEncoder::new(&mut png_data).write_image(
+            &buffer,
+            self.width,
+            self.height,
+            image::ColorType::Rgba8,
+        )?;
 
         // Base64 encode the PNG data
         let base64_png = base64::engine::general_purpose::STANDARD.encode(png_data);
