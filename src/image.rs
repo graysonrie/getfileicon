@@ -48,6 +48,19 @@ impl Image {
 
     /// Returns the image encoded as a base64 PNG string
     pub fn as_base64_png(&self) -> Result<String, Box<dyn std::error::Error>> {
+        // Validate dimensions
+        let expected_size = (self.width * self.height * 4) as usize;
+        if self.pixels.len() != expected_size {
+            return Err(format!(
+                "Invalid dimensions: expected {} bytes for {}x{} image, got {} bytes",
+                expected_size,
+                self.width,
+                self.height,
+                self.pixels.len()
+            )
+            .into());
+        }
+
         // Create an ImageBuffer from the raw RGBA pixels
         let buffer =
             ImageBuffer::<Rgba<u8>, _>::from_raw(self.width, self.height, self.pixels.to_vec())
