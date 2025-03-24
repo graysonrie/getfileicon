@@ -5,10 +5,17 @@ use windows::Win32::Graphics::Gdi::DeleteObject;
 
 use crate::{renderer, shell};
 
+#[derive(Debug, Clone)]
+pub struct Base64Png {
+    pub base64: String,
+    pub is_default: bool,
+}
+
+#[derive(Debug, Clone)]
 pub struct Image {
     pixels: Vec<u8>,
-    width: u32,
-    height: u32,
+    pub width: u32,
+    pub height: u32,
 }
 
 impl Image {
@@ -47,7 +54,7 @@ impl Image {
     }
 
     /// Returns the image encoded as a base64 PNG string
-    pub fn as_base64_png(&self) -> Result<String, Box<dyn std::error::Error>> {
+    pub fn as_base64_png(&self) -> Result<Base64Png, Box<dyn std::error::Error>> {
         // Validate dimensions
         let expected_size = (self.width * self.height * 4) as usize;
         if self.pixels.len() != expected_size {
@@ -77,8 +84,10 @@ impl Image {
 
         // Base64 encode the PNG data
         let base64_png = base64::engine::general_purpose::STANDARD.encode(png_data);
+        let base64 = format!("data:image/png;base64,{}", base64_png);
+        let is_default = self.is_default_base64_png(&base64);
 
-        Ok(format!("data:image/png;base64,{}", base64_png))
+        Ok(Base64Png { base64, is_default })
     }
 
     pub fn save_as_png(
@@ -94,6 +103,11 @@ impl Image {
         buffer.save(Path::new(output_path))?;
 
         Ok(())
+    }
+
+    fn is_default_base64_png(&self, base64_png: &str) -> bool {
+        let default = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAABZElEQVR4Ae3AA6AkWZbG8f937o3IzKdyS2Oubdu2bdu2bdu2bWmMnpZKr54yMyLu+Xa3anqmhztr1a/yAJ/8CZ/wDg5v8kKEvUrVX/qSL/mSSzwvxAN80zd83dE7vvO7Lnghfu1XfinvvOP2X7vznrPv/pVf+ZXneE4EDxCllO3tbba3t9ne3mZ7e5vt7W22t7fZ3t5me3ubruvj7d7xnd/gIQ+66Xs/5mM+5iTPieDf4Nprr413eud3e5OHP+zBP/jJn/zJp3g2gn8TcfzECd76rd/uDU+f2Pm+T/qkTzrGFVT+lR728Ifzcz/z0xgD6Nrrrn/jsxcuvh3wnQCVf6XHvtiL89gXe3Hut7t7Uf/w+L+vXEHlPxaV/1hU/mNR+Y9F5T8Wlf9YVP5jUfmPReU/FpX/WFT+Y1F5gNVqNdz69Kf3/CvsH+xZSeMKKg9w9z13vvZ3fte39fwrRIb7yU/hCv4Rx8VNRaZSeusAAAAASUVORK5CYII=";
+        base64_png == default
     }
 
     fn bgra_to_rgba(pixels: &[u8]) -> Vec<u8> {
