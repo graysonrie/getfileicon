@@ -1,5 +1,5 @@
 #[cfg(test)]
-mod tests {
+mod test {
     use crate::image::Image;
     use std::env;
 
@@ -8,6 +8,21 @@ mod tests {
             "{}\\System32",
             env::var("WINDIR").unwrap_or_else(|_| "C:\\Windows".to_string())
         )
+    }
+
+    #[test]
+    fn get_random_file() {
+        let path = "MISC.png";
+
+        let result = Image::try_new_from_file_recommended(path);
+        match result {
+            Ok(image) => {
+                image.as_base64_png().unwrap();
+            }
+            Err(err) => {
+                panic!("{}", err)
+            }
+        }
     }
 
     #[test]

@@ -18,7 +18,18 @@ pub struct Image {
     pub height: u32,
 }
 
-impl Image {
+impl Image{
+    /// Try to get the icon image using the recommended aspect ratio provided by the system
+    pub fn try_new_from_file_recommended(path: &str) -> Result<Self, Box<dyn std::error::Error>> {
+        match shell::get_recommended_icon_size(path) {
+            Ok((width, height)) => {
+                tracing::debug!("Got recommended size: {}x{}", width, height);
+                Self::try_new_from_file(path, width, height)
+            }
+            Err(err) => Err(err.into()),
+        }
+    }
+
     /// Expects pixels in RGBA format
     pub fn try_new_from_file(
         path: &str,
@@ -58,6 +69,13 @@ impl Image {
         // Validate dimensions
         let expected_size = (self.width * self.height * 4) as usize;
         if self.pixels.len() != expected_size {
+            tracing::debug!(
+                "Pixel data length: {}, Expected size: {}x{}x4 = {}",
+                self.pixels.len(),
+                self.width,
+                self.height,
+                expected_size
+            );
             return Err(format!(
                 "Invalid dimensions: expected {} bytes for {}x{} image, got {} bytes",
                 expected_size,
