@@ -7,12 +7,7 @@ use crate::image::Image;
 
 use super::utils::EvictionQueue;
 
-#[derive(Hash, Eq, PartialEq, Clone)]
-struct CacheKey {
-    path: String,
-    width: u32,
-    height: u32,
-}
+type CacheKey = String;
 
 struct CacheEntry {
     image: Image,
@@ -21,13 +16,15 @@ struct CacheEntry {
 }
 
 /// A cache for PNG images. Safe to use across threads.
-pub struct PngCache {
+///
+/// Same as the other PNG cache, except you do not need to specify image dimensions
+pub struct EasyPngCache {
     cache: Arc<TokioRwLock<HashMap<CacheKey, CacheEntry>>>,
     eviction_queue: Arc<TokioRwLock<EvictionQueue<CacheKey>>>,
     max_size: usize,
 }
 
-impl PngCache {
+impl EasyPngCache {
     pub fn new(max_size: usize) -> Self {
         let cache = Arc::new(TokioRwLock::new(HashMap::new()));
         let eviction_queue = Arc::new(TokioRwLock::new(EvictionQueue::new(max_size)));
@@ -49,18 +46,8 @@ impl PngCache {
         }
     }
 
-    pub async fn get(&self, path: &str, width: u32, height: u32) -> Option<Arc<Image>> {
-        tracing::debug!(
-            "Cache get request for path: {}, size: {}x{}",
-            path,
-            width,
-            height
-        );
-        let key = CacheKey {
-            path: path.to_string(),
-            width,
-            height,
-        };
+    pub async fn get(&self, path: &str) -> Option<Arc<Image>> {
+        let key = path.to_string();
 
         // First try a read lock
         let image = {
@@ -106,7 +93,7 @@ impl PngCache {
 
         // Create new image
         tracing::debug!("Loading new image from file");
-        match Image::try_new_from_file(path, width, height) {
+        match Image::try_new_from_file_recommended(path) {
             Ok(image) => {
                 if cache.len() >= self.max_size {
                     tracing::debug!(
@@ -116,7 +103,7 @@ impl PngCache {
                     // Use the eviction queue to determine what to remove
                     if let Some(old_key) = queue.get_oldest() {
                         cache.remove(old_key);
-                        tracing::debug!("Evicted entry for path: {}", old_key.path);
+                        tracing::debug!("Evicted entry for path: {}", old_key);
                     }
                 }
 
