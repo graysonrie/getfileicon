@@ -1,4 +1,4 @@
-pub mod api;
+pub mod prelude;
 mod caches;
 mod image;
 mod renderer;
